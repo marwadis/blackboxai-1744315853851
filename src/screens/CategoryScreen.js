@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  Animated,
+  Pressable,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
@@ -72,6 +74,7 @@ const filters = {
 
 const CategoryScreen = ({ navigation }) => {
   const [showFilters, setShowFilters] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const [selectedFilters, setSelectedFilters] = useState({
     saltComposition: [],
     brands: [],
@@ -161,6 +164,14 @@ const CategoryScreen = ({ navigation }) => {
     </Modal>
   );
 
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Header with Filter Button */}
@@ -176,24 +187,55 @@ const CategoryScreen = ({ navigation }) => {
       </View>
 
       {/* Categories Grid */}
-      <ScrollView contentContainerStyle={styles.categoriesContainer}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={styles.categoryCard}
-            onPress={() => handleCategoryPress(category)}
-          >
-            <FontAwesome5
-              name={category.icon}
-              size={32}
-              color={COLORS.primary}
-              style={styles.categoryIcon}
-            />
-            <Text style={styles.categoryName}>{category.name}</Text>
-            <Text style={styles.categoryCount}>{category.count}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <Animated.ScrollView 
+        contentContainerStyle={styles.categoriesContainer}
+        style={{ opacity: fadeAnim }}
+      >
+        {categories.map((category) => {
+          const scaleAnim = useRef(new Animated.Value(1)).current;
+          
+          const handlePressIn = () => {
+            Animated.spring(scaleAnim, {
+              toValue: 0.95,
+              useNativeDriver: true,
+            }).start();
+          };
+
+          const handlePressOut = () => {
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              useNativeDriver: true,
+            }).start();
+          };
+
+          return (
+            <Pressable
+              key={category.id}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              onPress={() => handleCategoryPress(category)}
+            >
+              <Animated.View
+                style={[
+                  styles.categoryCard,
+                  {
+                    transform: [{ scale: scaleAnim }],
+                  },
+                ]}
+              >
+                <FontAwesome5
+                  name={category.icon}
+                  size={32}
+                  color={COLORS.primary}
+                  style={styles.categoryIcon}
+                />
+                <Text style={styles.categoryName}>{category.name}</Text>
+                <Text style={styles.categoryCount}>{category.count}</Text>
+              </Animated.View>
+            </Pressable>
+          );
+        })}
+      </Animated.ScrollView>
 
       <FilterModal />
     </View>
@@ -210,8 +252,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SIZES.padding.large,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
+    backgroundColor: COLORS.background,
+    ...SHADOWS.small,
   },
   headerTitle: {
     fontSize: SIZES.xlarge,
@@ -221,9 +263,10 @@ const styles = StyleSheet.create({
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SIZES.padding.small,
-    borderRadius: SIZES.radius.medium,
+    padding: SIZES.padding.medium,
+    borderRadius: SIZES.radius.large,
     backgroundColor: COLORS.surface,
+    ...SHADOWS.small,
   },
   filterButtonText: {
     marginLeft: SIZES.padding.small,
@@ -242,16 +285,10 @@ const styles = StyleSheet.create({
     padding: SIZES.padding.large,
     marginBottom: SIZES.padding.medium,
     backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.medium,
+    borderRadius: SIZES.radius.large,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    ...SHADOWS.medium,
+    transform: [{ scale: 1 }],
   },
   categoryIcon: {
     marginBottom: SIZES.padding.medium,
@@ -275,10 +312,11 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: SIZES.radius.large,
-    borderTopRightRadius: SIZES.radius.large,
-    padding: SIZES.padding.large,
-    maxHeight: '80%',
+    borderTopLeftRadius: SIZES.radius.xlarge,
+    borderTopRightRadius: SIZES.radius.xlarge,
+    padding: SIZES.padding.xlarge,
+    maxHeight: '85%',
+    ...SHADOWS.large,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -307,11 +345,13 @@ const styles = StyleSheet.create({
   filterOption: {
     paddingHorizontal: SIZES.padding.medium,
     paddingVertical: SIZES.padding.small,
-    borderRadius: SIZES.radius.medium,
+    borderRadius: SIZES.radius.large,
     borderWidth: 1,
     borderColor: COLORS.text.disabled,
     marginRight: SIZES.padding.small,
     marginBottom: SIZES.padding.small,
+    backgroundColor: COLORS.background,
+    ...SHADOWS.small,
   },
   filterOptionSelected: {
     backgroundColor: COLORS.primary,
@@ -327,10 +367,11 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     backgroundColor: COLORS.primary,
-    padding: SIZES.padding.medium,
-    borderRadius: SIZES.radius.medium,
+    padding: SIZES.padding.large,
+    borderRadius: SIZES.radius.large,
     alignItems: 'center',
-    marginTop: SIZES.padding.medium,
+    marginTop: SIZES.padding.large,
+    ...SHADOWS.medium,
   },
   applyButtonText: {
     color: COLORS.background,
