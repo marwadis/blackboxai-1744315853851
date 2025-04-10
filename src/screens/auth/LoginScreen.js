@@ -8,19 +8,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Animated,
 } from 'react-native';
-import { TextInput, Button } from 'react-native-paper';
-import { COLORS, FONTS, SIZES } from '../../constants/theme';
+import { TextInput } from 'react-native-paper';
+import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
-  const [loginMethod, setLoginMethod] = useState('phone'); // 'phone', 'gst', 'email'
+  const [loginMethod, setLoginMethod] = useState('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [gstNumber, setGstNumber] = useState('');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('english');
+  const [isLoading, setIsLoading] = useState(false);
 
   const languages = [
     { id: 'english', name: 'English' },
@@ -29,12 +31,17 @@ const LoginScreen = ({ navigation }) => {
   ];
 
   const handleLogin = () => {
+    setIsLoading(true);
     if (showOtp) {
-      // Verify OTP and navigate to main app
-      navigation.replace('MainApp');
+      setTimeout(() => {
+        setIsLoading(false);
+        navigation.replace('MainApp');
+      }, 1500);
     } else {
-      // Send OTP
-      setShowOtp(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        setShowOtp(true);
+      }, 1000);
     }
   };
 
@@ -42,7 +49,7 @@ const LoginScreen = ({ navigation }) => {
     switch (loginMethod) {
       case 'phone':
         return (
-          <>
+          <View style={styles.formGroup}>
             <TextInput
               mode="outlined"
               label="Phone Number"
@@ -51,48 +58,62 @@ const LoginScreen = ({ navigation }) => {
               keyboardType="phone-pad"
               left={<TextInput.Affix text="+91" />}
               style={styles.input}
-              outlineColor={COLORS.text.secondary}
+              outlineColor={COLORS.text.disabled}
               activeOutlineColor={COLORS.primary}
+              theme={{ roundness: SIZES.radius.medium }}
             />
             {showOtp && (
-              <TextInput
-                mode="outlined"
-                label="Enter OTP"
-                value={otp}
-                onChangeText={setOtp}
-                keyboardType="number-pad"
-                style={styles.input}
-                outlineColor={COLORS.text.secondary}
-                activeOutlineColor={COLORS.primary}
-                maxLength={6}
-              />
+              <Animated.View 
+                entering={Animated.FadeInDown}
+                style={styles.otpContainer}
+              >
+                <TextInput
+                  mode="outlined"
+                  label="Enter OTP"
+                  value={otp}
+                  onChangeText={setOtp}
+                  keyboardType="number-pad"
+                  style={styles.input}
+                  outlineColor={COLORS.text.disabled}
+                  activeOutlineColor={COLORS.primary}
+                  theme={{ roundness: SIZES.radius.medium }}
+                  maxLength={6}
+                />
+                <Text style={styles.otpHint}>OTP sent to +91 {phoneNumber}</Text>
+              </Animated.View>
             )}
-          </>
+          </View>
         );
       case 'gst':
         return (
-          <TextInput
-            mode="outlined"
-            label="GST Number"
-            value={gstNumber}
-            onChangeText={setGstNumber}
-            style={styles.input}
-            outlineColor={COLORS.text.secondary}
-            activeOutlineColor={COLORS.primary}
-          />
+          <View style={styles.formGroup}>
+            <TextInput
+              mode="outlined"
+              label="GST Number"
+              value={gstNumber}
+              onChangeText={setGstNumber}
+              style={styles.input}
+              outlineColor={COLORS.text.disabled}
+              activeOutlineColor={COLORS.primary}
+              theme={{ roundness: SIZES.radius.medium }}
+            />
+          </View>
         );
       case 'email':
         return (
-          <TextInput
-            mode="outlined"
-            label="Email Address"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            style={styles.input}
-            outlineColor={COLORS.text.secondary}
-            activeOutlineColor={COLORS.primary}
-          />
+          <View style={styles.formGroup}>
+            <TextInput
+              mode="outlined"
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              style={styles.input}
+              outlineColor={COLORS.text.disabled}
+              activeOutlineColor={COLORS.primary}
+              theme={{ roundness: SIZES.radius.medium }}
+            />
+          </View>
         );
       default:
         return null;
@@ -108,12 +129,15 @@ const LoginScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}>
         {/* Logo and Welcome Text */}
         <View style={styles.header}>
-          <Image
-            source={{
-              uri: 'https://images.pexels.com/photos/4021779/pexels-photo-4021779.jpeg',
-            }}
-            style={styles.logo}
-          />
+          <View style={styles.logoContainer}>
+            <Image
+              source={{
+                uri: 'https://images.pexels.com/photos/4021779/pexels-photo-4021779.jpeg',
+              }}
+              style={styles.logo}
+            />
+            <View style={styles.logoOverlay} />
+          </View>
           <Text style={styles.welcomeText}>Welcome Back!</Text>
           <Text style={styles.subText}>
             Login to access your wholesale medicine account
@@ -122,65 +146,41 @@ const LoginScreen = ({ navigation }) => {
 
         {/* Login Method Selector */}
         <View style={styles.methodSelector}>
-          <TouchableOpacity
-            style={[
-              styles.methodOption,
-              loginMethod === 'phone' && styles.methodOptionActive,
-            ]}
-            onPress={() => setLoginMethod('phone')}>
-            <FontAwesome5
-              name="phone"
-              size={20}
-              color={loginMethod === 'phone' ? COLORS.primary : COLORS.text.secondary}
-            />
-            <Text
+          {['phone', 'gst', 'email'].map((method) => (
+            <TouchableOpacity
+              key={method}
               style={[
-                styles.methodText,
-                loginMethod === 'phone' && styles.methodTextActive,
-              ]}>
-              Phone
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.methodOption,
-              loginMethod === 'gst' && styles.methodOptionActive,
-            ]}
-            onPress={() => setLoginMethod('gst')}>
-            <FontAwesome5
-              name="building"
-              size={20}
-              color={loginMethod === 'gst' ? COLORS.primary : COLORS.text.secondary}
-            />
-            <Text
-              style={[
-                styles.methodText,
-                loginMethod === 'gst' && styles.methodTextActive,
-              ]}>
-              GST
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.methodOption,
-              loginMethod === 'email' && styles.methodOptionActive,
-            ]}
-            onPress={() => setLoginMethod('email')}>
-            <FontAwesome5
-              name="envelope"
-              size={20}
-              color={loginMethod === 'email' ? COLORS.primary : COLORS.text.secondary}
-            />
-            <Text
-              style={[
-                styles.methodText,
-                loginMethod === 'email' && styles.methodTextActive,
-              ]}>
-              Email
-            </Text>
-          </TouchableOpacity>
+                styles.methodOption,
+                loginMethod === method && styles.methodOptionActive,
+              ]}
+              onPress={() => {
+                setLoginMethod(method);
+                setShowOtp(false);
+              }}>
+              <FontAwesome5
+                name={
+                  method === 'phone'
+                    ? 'phone'
+                    : method === 'gst'
+                    ? 'building'
+                    : 'envelope'
+                }
+                size={20}
+                color={
+                  loginMethod === method
+                    ? COLORS.primary
+                    : COLORS.text.secondary
+                }
+              />
+              <Text
+                style={[
+                  styles.methodText,
+                  loginMethod === method && styles.methodTextActive,
+                ]}>
+                {method.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Login Form */}
@@ -211,14 +211,23 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         {/* Login Button */}
-        <Button
-          mode="contained"
+        <TouchableOpacity
+          style={[
+            styles.loginButton,
+            isLoading && styles.loginButtonLoading,
+          ]}
           onPress={handleLogin}
-          style={styles.loginButton}
-          contentStyle={styles.loginButtonContent}
-          labelStyle={styles.loginButtonText}>
-          {showOtp ? 'Verify & Login' : 'Continue'}
-        </Button>
+          disabled={isLoading}>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <FontAwesome5 name="spinner" size={24} color={COLORS.background} />
+            </View>
+          ) : (
+            <Text style={styles.loginButtonText}>
+              {showOtp ? 'Verify & Login' : 'Continue'}
+            </Text>
+          )}
+        </TouchableOpacity>
 
         {/* Terms and Privacy */}
         <Text style={styles.termsText}>
@@ -238,17 +247,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: SIZES.padding.large,
+    padding: SIZES.padding.xlarge,
   },
   header: {
     alignItems: 'center',
     marginVertical: SIZES.padding.xlarge,
   },
-  logo: {
+  logoContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
+    overflow: 'hidden',
+    ...SHADOWS.large,
     marginBottom: SIZES.padding.large,
+    position: 'relative',
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+  },
+  logoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
   },
   welcomeText: {
     fontSize: SIZES.xlarge,
@@ -265,29 +285,23 @@ const styles = StyleSheet.create({
   methodSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: SIZES.padding.large,
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.radius.large,
     padding: SIZES.padding.small,
+    marginBottom: SIZES.padding.large,
+    ...SHADOWS.small,
   },
   methodOption: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: SIZES.padding.medium,
     borderRadius: SIZES.radius.medium,
-    flexDirection: 'row',
-    justifyContent: 'center',
   },
   methodOptionActive: {
     backgroundColor: COLORS.background,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    ...SHADOWS.small,
   },
   methodText: {
     marginLeft: SIZES.padding.small,
@@ -301,12 +315,24 @@ const styles = StyleSheet.create({
   formContainer: {
     marginBottom: SIZES.padding.large,
   },
-  input: {
+  formGroup: {
     marginBottom: SIZES.padding.medium,
+  },
+  input: {
     backgroundColor: COLORS.background,
+    marginBottom: SIZES.padding.small,
+  },
+  otpContainer: {
+    marginTop: SIZES.padding.medium,
+  },
+  otpHint: {
+    fontSize: SIZES.small,
+    fontFamily: FONTS.regular,
+    color: COLORS.text.secondary,
+    marginTop: SIZES.padding.small,
   },
   languageContainer: {
-    marginBottom: SIZES.padding.large,
+    marginBottom: SIZES.padding.xlarge,
   },
   languageLabel: {
     fontSize: SIZES.font,
@@ -341,16 +367,26 @@ const styles = StyleSheet.create({
     color: COLORS.background,
   },
   loginButton: {
-    marginBottom: SIZES.padding.large,
-    borderRadius: SIZES.radius.medium,
     backgroundColor: COLORS.primary,
+    padding: SIZES.padding.large,
+    borderRadius: SIZES.radius.large,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SIZES.padding.large,
+    ...SHADOWS.medium,
   },
-  loginButtonContent: {
-    height: 48,
+  loginButtonLoading: {
+    opacity: 0.8,
   },
   loginButtonText: {
     fontSize: SIZES.medium,
     fontFamily: FONTS.medium,
+    color: COLORS.background,
+  },
+  loadingContainer: {
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   termsText: {
     fontSize: SIZES.small,
