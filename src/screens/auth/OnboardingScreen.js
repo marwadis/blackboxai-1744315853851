@@ -3,12 +3,13 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  FlatList, 
   Dimensions, 
   TouchableOpacity, 
-  Image 
+  Image,
+  Animated 
 } from 'react-native';
-import { COLORS, FONTS, SIZES } from '../../constants/theme';
+import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,124 +19,181 @@ const slides = [
     image: 'https://images.pexels.com/photos/3683074/pexels-photo-3683074.jpeg',
     title: 'Verified Suppliers',
     description: 'Connect with trusted pharmaceutical distributors and wholesalers across India',
+    icon: 'shield-alt'
   },
   {
     id: '2',
     image: 'https://images.pexels.com/photos/3943882/pexels-photo-3943882.jpeg',
     title: 'Bulk Discounts',
     description: 'Get the best prices on bulk orders with exclusive wholesale rates',
+    icon: 'percentage'
   },
   {
     id: '3',
     image: 'https://images.pexels.com/photos/4386466/pexels-photo-4386466.jpeg',
     title: 'Fast Delivery',
     description: 'Quick and reliable delivery to your doorstep with real-time order tracking',
+    icon: 'shipping-fast'
   },
 ];
 
 const OnboardingScreen = ({ navigation }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
 
-  const updateCurrentSlideIndex = (e) => {
-    const contentOffsetX = e.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(contentOffsetX / width);
-    setCurrentSlideIndex(currentIndex);
-  };
+  const viewableItemsChanged = useRef(({ viewableItems }) => {
+    setCurrentSlideIndex(viewableItems[0]?.index || 0);
+  }).current;
 
-  const goToNextSlide = () => {
-    const nextSlideIndex = currentSlideIndex + 1;
-    if (nextSlideIndex < slides.length) {
-      flatListRef.current.scrollToIndex({
-        index: nextSlideIndex,
+  const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+  const scrollTo = () => {
+    if (currentSlideIndex < slides.length - 1) {
+      flatListRef.current?.scrollToIndex({
+        index: currentSlideIndex + 1,
         animated: true,
       });
-      setCurrentSlideIndex(nextSlideIndex);
+    } else {
+      navigation.replace('Login');
     }
   };
 
-  const skip = () => {
-    navigation.replace('Login');
-  };
+  const Slide = ({ item, index }) => {
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
 
-  const Footer = () => {
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.8, 1, 0.8],
+    });
+
+    const translateY = scrollX.interpolate({
+      inputRange,
+      outputRange: [30, 0, 30],
+    });
+
     return (
-      <View style={styles.footer}>
-        {/* Pagination dots */}
-        <View style={styles.indicatorContainer}>
-          {slides.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.indicator,
-                currentSlideIndex === index && styles.activeIndicator,
-              ]}
-            />
-          ))}
-        </View>
+      <View style={styles.slide}>
+        <Animated.View 
+          style={[
+            styles.imageContainer,
+            { transform: [{ scale }, { translateY }] }
+          ]}
+        >
+          <Image
+            source={{ uri: item.image }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          <View style={styles.iconOverlay}>
+            <FontAwesome5 name={item.icon} size={32} color={COLORS.primary} />
+          </View>
+        </Animated.View>
 
-        {/* Buttons */}
-        <View style={styles.buttonContainer}>
-          {currentSlideIndex === slides.length - 1 ? (
-            <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
-              onPress={skip}>
-              <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
-                Get Started
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.button, styles.buttonSecondary]}
-                onPress={skip}>
-                <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
-                  Skip
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.buttonPrimary]}
-                onPress={goToNextSlide}>
-                <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
-                  Next
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <Animated.View 
+          style={[
+            styles.textContainer,
+            { transform: [{ translateY: translateY }] }
+          ]}
+        >
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.description}>{item.description}</Text>
+        </Animated.View>
       </View>
     );
   };
 
-  const Slide = ({ item }) => {
+  const Pagination = () => {
     return (
-      <View style={styles.slide}>
-        <Image
-          source={{ uri: item.image }}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        <View style={styles.contentContainer}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.description}>{item.description}</Text>
-        </View>
+      <View style={styles.paginationContainer}>
+        {slides.map((_, index) => {
+          const inputRange = [
+            (index - 1) * width,
+            index * width,
+            (index + 1) * width,
+          ];
+
+          const scale = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.8, 1.4, 0.8],
+            extrapolate: 'clamp',
+          });
+
+          const opacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.4, 1, 0.4],
+            extrapolate: 'clamp',
+          });
+
+          return (
+            <Animated.View
+              key={index.toString()}
+              style={[
+                styles.dot,
+                {
+                  transform: [{ scale }],
+                  opacity,
+                },
+              ]}
+            />
+          );
+        })}
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <Animated.FlatList
         ref={flatListRef}
         data={slides}
-        renderItem={({ item }) => <Slide item={item} />}
+        renderItem={({ item, index }) => <Slide item={item} index={index} />}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={updateCurrentSlideIndex}
+        bounces={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true }
+        )}
+        onViewableItemsChanged={viewableItemsChanged}
+        viewabilityConfig={viewConfig}
+        scrollEventThrottle={16}
         keyExtractor={(item) => item.id}
       />
-      <Footer />
+
+      <View style={styles.footer}>
+        <Pagination />
+        
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={scrollTo}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.nextButtonText}>
+            {currentSlideIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+          </Text>
+          <FontAwesome5 
+            name={currentSlideIndex === slides.length - 1 ? 'check' : 'arrow-right'} 
+            size={16} 
+            color={COLORS.background}
+            style={styles.buttonIcon}
+          />
+        </TouchableOpacity>
+
+        {currentSlideIndex !== slides.length - 1 && (
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={() => navigation.replace('Login')}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
@@ -149,17 +207,36 @@ const styles = StyleSheet.create({
     width,
     height,
     alignItems: 'center',
+    padding: SIZES.padding.xlarge,
+  },
+  imageContainer: {
+    width: width * 0.85,
+    height: height * 0.45,
+    marginTop: height * 0.08,
+    borderRadius: SIZES.radius.xlarge,
+    overflow: 'hidden',
+    ...SHADOWS.large,
   },
   image: {
-    width: width * 0.8,
-    height: height * 0.4,
-    marginTop: height * 0.1,
-    borderRadius: SIZES.radius.xlarge,
+    width: '100%',
+    height: '100%',
   },
-  contentContainer: {
+  iconOverlay: {
+    position: 'absolute',
+    bottom: SIZES.padding.large,
+    right: SIZES.padding.large,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.medium,
+  },
+  textContainer: {
     flex: 1,
     alignItems: 'center',
-    padding: SIZES.padding.xlarge,
+    marginTop: SIZES.padding.xlarge * 2,
   },
   title: {
     fontSize: SIZES.xlarge,
@@ -173,62 +250,61 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     color: COLORS.text.secondary,
     textAlign: 'center',
+    lineHeight: 24,
     paddingHorizontal: SIZES.padding.large,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
-    width: '100%',
+    left: 0,
+    right: 0,
     padding: SIZES.padding.xlarge,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopLeftRadius: SIZES.radius.xlarge,
+    borderTopRightRadius: SIZES.radius.xlarge,
+    ...SHADOWS.large,
   },
-  indicatorContainer: {
+  paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: SIZES.padding.large,
   },
-  indicator: {
-    height: 8,
+  dot: {
     width: 8,
-    backgroundColor: COLORS.text.disabled,
-    marginHorizontal: 5,
+    height: 8,
     borderRadius: 4,
-  },
-  activeIndicator: {
-    width: 20,
     backgroundColor: COLORS.primary,
+    marginHorizontal: 4,
   },
-  buttonContainer: {
-    marginBottom: SIZES.padding.large,
-  },
-  buttonRow: {
+  nextButton: {
+    backgroundColor: COLORS.primary,
+    padding: SIZES.padding.large,
+    borderRadius: SIZES.radius.large,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  button: {
-    paddingVertical: SIZES.padding.medium,
-    paddingHorizontal: SIZES.padding.xlarge,
-    borderRadius: SIZES.radius.medium,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.medium,
   },
-  buttonPrimary: {
-    backgroundColor: COLORS.primary,
-    minWidth: 120,
-  },
-  buttonSecondary: {
-    backgroundColor: 'transparent',
-    minWidth: 120,
-  },
-  buttonText: {
+  nextButtonText: {
+    color: COLORS.background,
     fontSize: SIZES.medium,
     fontFamily: FONTS.medium,
+    marginRight: SIZES.padding.small,
   },
-  buttonTextPrimary: {
-    color: COLORS.background,
+  buttonIcon: {
+    marginLeft: SIZES.padding.small,
   },
-  buttonTextSecondary: {
+  skipButton: {
+    position: 'absolute',
+    top: -50,
+    right: SIZES.padding.xlarge,
+    padding: SIZES.padding.medium,
+  },
+  skipText: {
     color: COLORS.text.secondary,
+    fontSize: SIZES.medium,
+    fontFamily: FONTS.medium,
   },
 });
 
