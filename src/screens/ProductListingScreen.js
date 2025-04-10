@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
+  Animated,
+  Pressable,
+  TextInput,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { COLORS, FONTS, SIZES } from '../constants/theme';
+import { COLORS, FONTS, SIZES, SHADOWS } from '../constants/theme';
 
 // Sample product data
 const products = [
@@ -44,13 +47,23 @@ const products = [
 ];
 
 const ProductListingScreen = ({ route, navigation }) => {
-  const [viewType, setViewType] = useState('grid'); // 'grid' or 'list'
+  const [viewType, setViewType] = useState('grid');
+  const [searchQuery, setSearchQuery] = useState('');
   const { category } = route.params;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={styles.headerTitle}>{category.name}</Text>
-      <View style={styles.headerRight}>
+      <View style={styles.headerTop}>
+        <Text style={styles.headerTitle}>{category.name}</Text>
         <TouchableOpacity
           style={styles.viewToggle}
           onPress={() => setViewType(viewType === 'grid' ? 'list' : 'grid')}
@@ -62,63 +75,117 @@ const ProductListingScreen = ({ route, navigation }) => {
           />
         </TouchableOpacity>
       </View>
+      <View style={styles.searchContainer}>
+        <FontAwesome5 name="search" size={18} color={COLORS.text.secondary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search products..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor={COLORS.text.secondary}
+        />
+      </View>
     </View>
   );
 
-  const renderProductCard = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.productCard,
-        viewType === 'list' && styles.productCardList,
-      ]}
-      onPress={() => navigation.navigate('ProductDetails', { product: item })}
-    >
-      <Image source={{ uri: item.image }} style={styles.productImage} />
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.brandName}>{item.brand}</Text>
-        <View style={styles.strengthPack}>
-          <Text style={styles.strengthText}>{item.strength}</Text>
-          <Text style={styles.packText}>{item.packSize}</Text>
-        </View>
-        <View style={styles.priceContainer}>
-          <View>
-            <Text style={styles.priceLabel}>Price per unit</Text>
-            <Text style={styles.price}>₹{item.pricePerUnit}</Text>
-          </View>
-          <View>
-            <Text style={styles.priceLabel}>Box price</Text>
-            <Text style={styles.price}>₹{item.boxPrice}</Text>
-          </View>
-        </View>
-        <View style={styles.bottomRow}>
-          <View style={styles.moqContainer}>
-            <Text style={styles.moqLabel}>MOQ: {item.moq} units</Text>
+  const ProductCard = ({ item, index }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const itemFadeAnim = useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+      Animated.timing(itemFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 100,
+        useNativeDriver: true,
+      }).start();
+    }, []);
+
+    const handlePressIn = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    return (
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={() => navigation.navigate('ProductDetails', { product: item })}
+      >
+        <Animated.View
+          style={[
+            styles.productCard,
+            viewType === 'list' && styles.productCardList,
+            {
+              opacity: itemFadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: item.image }} style={styles.productImage} />
             {item.discount && (
               <View style={styles.discountBadge}>
                 <Text style={styles.discountText}>{item.discount} OFF</Text>
               </View>
             )}
           </View>
-          <TouchableOpacity style={styles.addButton}>
-            <Text style={styles.addButtonText}>Add</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+          <View style={styles.productInfo}>
+            <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+            <Text style={styles.brandName}>{item.brand}</Text>
+            <View style={styles.strengthPack}>
+              <Text style={styles.strengthText}>{item.strength}</Text>
+              <Text style={styles.packText}>{item.packSize}</Text>
+            </View>
+            <View style={styles.priceContainer}>
+              <View>
+                <Text style={styles.priceLabel}>Price per unit</Text>
+                <Text style={styles.price}>₹{item.pricePerUnit}</Text>
+              </View>
+              <View>
+                <Text style={styles.priceLabel}>Box price</Text>
+                <Text style={styles.price}>₹{item.boxPrice}</Text>
+              </View>
+            </View>
+            <View style={styles.bottomRow}>
+              <View style={styles.moqContainer}>
+                <Text style={styles.moqLabel}>MOQ: {item.moq} units</Text>
+                <Text style={styles.stockText}>In Stock: {item.stock}</Text>
+              </View>
+              <TouchableOpacity style={styles.addButton}>
+                <FontAwesome5 name="plus" size={14} color={COLORS.background} />
+                <Text style={styles.addButtonText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
       {renderHeader()}
-      <FlatList
-        data={products}
-        renderItem={renderProductCard}
-        keyExtractor={(item) => item.id}
-        numColumns={viewType === 'grid' ? 2 : 1}
-        key={viewType} // Force re-render when view type changes
-        contentContainerStyle={styles.productList}
-      />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <FlatList
+          data={products}
+          renderItem={({ item, index }) => <ProductCard item={item} index={index} />}
+          keyExtractor={(item) => item.id}
+          numColumns={viewType === 'grid' ? 2 : 1}
+          key={viewType}
+          contentContainerStyle={styles.productList}
+          showsVerticalScrollIndicator={false}
+        />
+      </Animated.View>
     </View>
   );
 };
@@ -129,26 +196,42 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    padding: SIZES.padding.large,
+    backgroundColor: COLORS.background,
+    ...SHADOWS.small,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SIZES.padding.large,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surface,
+    marginBottom: SIZES.padding.medium,
   },
   headerTitle: {
-    fontSize: SIZES.large,
+    fontSize: SIZES.xlarge,
     fontFamily: FONTS.bold,
     color: COLORS.text.primary,
   },
-  headerRight: {
+  viewToggle: {
+    padding: SIZES.padding.medium,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.large,
+    ...SHADOWS.small,
+  },
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  viewToggle: {
-    padding: SIZES.padding.small,
     backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.medium,
+    borderRadius: SIZES.radius.large,
+    paddingHorizontal: SIZES.padding.medium,
+    ...SHADOWS.small,
+  },
+  searchInput: {
+    flex: 1,
+    height: 45,
+    marginLeft: SIZES.padding.medium,
+    fontSize: SIZES.medium,
+    fontFamily: FONTS.regular,
+    color: COLORS.text.primary,
   },
   productList: {
     padding: SIZES.padding.medium,
@@ -157,35 +240,45 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: SIZES.padding.small,
     backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.medium,
+    borderRadius: SIZES.radius.large,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    ...SHADOWS.medium,
   },
   productCardList: {
     flexDirection: 'row',
     flex: 1,
-    margin: SIZES.padding.small,
+  },
+  imageContainer: {
+    position: 'relative',
   },
   productImage: {
     width: '100%',
-    height: 150,
+    height: 180,
     resizeMode: 'cover',
   },
+  discountBadge: {
+    position: 'absolute',
+    top: SIZES.padding.medium,
+    right: SIZES.padding.medium,
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: SIZES.padding.medium,
+    paddingVertical: SIZES.padding.small / 2,
+    borderRadius: SIZES.radius.large,
+    ...SHADOWS.small,
+  },
+  discountText: {
+    fontSize: SIZES.small,
+    fontFamily: FONTS.bold,
+    color: COLORS.background,
+  },
   productInfo: {
-    padding: SIZES.padding.medium,
+    padding: SIZES.padding.large,
   },
   productName: {
     fontSize: SIZES.medium,
     fontFamily: FONTS.medium,
     color: COLORS.text.primary,
-    marginBottom: SIZES.padding.small / 2,
+    marginBottom: SIZES.padding.small,
   },
   brandName: {
     fontSize: SIZES.font,
@@ -195,13 +288,17 @@ const styles = StyleSheet.create({
   },
   strengthPack: {
     flexDirection: 'row',
-    marginBottom: SIZES.padding.small,
+    marginBottom: SIZES.padding.medium,
   },
   strengthText: {
     fontSize: SIZES.small,
     fontFamily: FONTS.medium,
     color: COLORS.text.primary,
     marginRight: SIZES.padding.medium,
+    backgroundColor: COLORS.primary + '10',
+    paddingHorizontal: SIZES.padding.small,
+    paddingVertical: 2,
+    borderRadius: SIZES.radius.small,
   },
   packText: {
     fontSize: SIZES.small,
@@ -212,12 +309,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: SIZES.padding.medium,
+    paddingVertical: SIZES.padding.medium,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: COLORS.surface,
   },
   priceLabel: {
     fontSize: SIZES.small,
     fontFamily: FONTS.regular,
     color: COLORS.text.secondary,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   price: {
     fontSize: SIZES.medium,
@@ -228,6 +329,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: SIZES.padding.small,
   },
   moqContainer: {
     flex: 1,
@@ -237,29 +339,26 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     color: COLORS.text.secondary,
   },
-  discountBadge: {
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: SIZES.padding.small,
-    paddingVertical: 2,
-    borderRadius: SIZES.radius.small,
-    marginTop: 4,
-    alignSelf: 'flex-start',
-  },
-  discountText: {
+  stockText: {
     fontSize: SIZES.small,
-    fontFamily: FONTS.medium,
-    color: COLORS.background,
+    fontFamily: FONTS.regular,
+    color: COLORS.secondary,
+    marginTop: 2,
   },
   addButton: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: SIZES.padding.medium,
     paddingVertical: SIZES.padding.small,
-    borderRadius: SIZES.radius.medium,
+    borderRadius: SIZES.radius.large,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOWS.small,
   },
   addButtonText: {
     fontSize: SIZES.font,
     fontFamily: FONTS.medium,
     color: COLORS.background,
+    marginLeft: SIZES.padding.small,
   },
 });
 
